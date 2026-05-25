@@ -1,0 +1,32 @@
+zarr=2.18.0
+numcodecs=0.12.1
+
+# hydra
+hydra-core
+omegaconf
+
+# diffusers
+diffusers
+transformers
+
+# core
+einops
+numpy
+scipy
+opencv-python
+h5py
+
+# training
+wandb
+tqdm
+dill
+accelerate
+
+# misc
+matplotlib
+termcolor
+imageio
+threadpoolctl
+numba
+robomimic==0.2.0
+pandas

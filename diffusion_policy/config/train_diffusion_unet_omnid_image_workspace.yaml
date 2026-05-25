@@ -64,18 +64,18 @@ ema:
   max_value: 0.9999
 
 dataloader:
-  batch_size: 64
-  num_workers: 8
+  batch_size: 8
+  num_workers: 2
   shuffle: True
   pin_memory: True
-  persistent_workers: True
+  persistent_workers: False
 
 val_dataloader:
-  batch_size: 64
-  num_workers: 8
+  batch_size: 8
+  num_workers: 2
   shuffle: False
   pin_memory: True
-  persistent_workers: True
+  persistent_workers: False
 
 optimizer:
   _target_: torch.optim.AdamW
@@ -85,7 +85,7 @@ optimizer:
   weight_decay: 1.0e-6
 
 training:
-  device: "cuda:0"
+  device: "cuda"
   seed: 42
   debug: False
   resume: True

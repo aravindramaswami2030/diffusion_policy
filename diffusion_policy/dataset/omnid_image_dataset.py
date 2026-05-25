@@ -23,7 +23,7 @@ class OmnidImageDataset(BaseImageDataset):
         
         super().__init__()
         self.replay_buffer = ReplayBuffer.copy_from_path(
-            zarr_path, keys=['img', 'state', 'action'])
+            zarr_path, keys=['camera', 'state', 'action'])
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
             val_ratio=val_ratio,
@@ -64,7 +64,7 @@ class OmnidImageDataset(BaseImageDataset):
         }
         normalizer = LinearNormalizer()
         normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
-        normalizer['image'] = get_image_range_normalizer()
+        normalizer['camera'] = get_image_range_normalizer()
         return normalizer
 
     def __len__(self) -> int:
@@ -72,17 +72,17 @@ class OmnidImageDataset(BaseImageDataset):
 
     def _sample_to_data(self, sample):
         agent_pos = sample['state'].astype(np.float32)
-        image = np.moveaxis(sample['img'],-1,1)/255
+        image = np.moveaxis(sample['camera'],-1,1)/255
 
         data = {
             'obs': {
-                'image': image, # T, 3, 96, 96
+                'camera': image, # T, 3, 96, 96
                 'agent_pos': agent_pos, # T, (27 or 36)
             },
             'action': sample['action'].astype(np.float32) # T, 9
         }
         return data
-    
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         sample = self.sampler.sample_sequence(idx)
         data = self._sample_to_data(sample)
@@ -91,12 +91,15 @@ class OmnidImageDataset(BaseImageDataset):
 
 
 def test():
-    import os
-    zarr_path = os.path.expanduser('~/dev/diffusion_policy/data/pusht/pusht_cchi_v7_replay.zarr')
-    dataset = OmnidImageDataset(zarr_path, horizon=16)
 
+    zarr_path = '/home/aravind-linux/ws/omnid/src/omnid_ml/zarr_data/omnid_global.zarr'
+    dataset = OmnidImageDataset(zarr_path, horizon=8)
+    print("done")
     # from matplotlib import pyplot as plt
     # normalizer = dataset.get_normalizer()
     # nactions = normalizer['action'].normalize(dataset.replay_buffer['action'])
     # diff = np.diff(nactions, axis=0)
     # dists = np.linalg.norm(np.diff(nactions, axis=0), axis=-1)
+
+if __name__ == '__main__':
+    test()
