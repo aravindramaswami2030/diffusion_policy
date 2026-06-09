@@ -6,24 +6,47 @@ from diffusion_policy.common.pytorch_util import dict_apply
 from diffusion_policy.common.replay_buffer import ReplayBuffer
 from diffusion_policy.common.sampler import (
     SequenceSampler, get_val_mask, downsample_mask)
-from diffusion_policy.model.common.normalizer import LinearNormalizer
+from diffusion_policy.model.common.normalizer import LinearNormalizer, SingleFieldLinearNormalizer
 from diffusion_policy.dataset.base_dataset import BaseImageDataset
 from diffusion_policy.common.normalize_util import get_image_range_normalizer
 
 class OmnidImageDataset(BaseImageDataset):
     def __init__(self,
-            zarr_path, 
-            horizon=1,
-            pad_before=0,
-            pad_after=0,
-            seed=42,
-            val_ratio=0.0,
-            max_train_episodes=None
-            ):
-        
+                 zarr_path,
+                 shape_meta,
+                 horizon,
+                 pad_before,
+                 pad_after,
+                 n_obs_steps,
+                 n_action_steps,
+                 seed=42,
+                 val_ratio=0.0,
+                 max_train_episodes=None
+                 ):
         super().__init__()
+        rgb_keys = list()
+        low_dim_keys = list()
+        obs_shape_meta = shape_meta['obs']
+        for key, attr in obs_shape_meta.items():
+            type = attr.get('type')
+            if type == 'rgb':
+                rgb_keys.append(key)
+            elif type == 'low_dim':
+                low_dim_keys.append(key)
+        obs_keys = rgb_keys + low_dim_keys
+
+        # take n_obs steps worth of data
+        key_first_k = dict()
+        if n_obs_steps is not None:
+            for key in obs_keys:
+                key_first_k[key] = n_obs_steps
+
+        # Create replay buffer
         self.replay_buffer = ReplayBuffer.copy_from_path(
-            zarr_path, keys=['camera', 'state', 'action'])
+            zarr_path=zarr_path,
+            keys=obs_keys + ['action']
+        )
+
         val_mask = get_val_mask(
             n_episodes=self.replay_buffer.n_episodes, 
             val_ratio=val_ratio,
@@ -39,7 +62,14 @@ class OmnidImageDataset(BaseImageDataset):
             sequence_length=horizon,
             pad_before=pad_before, 
             pad_after=pad_after,
-            episode_mask=train_mask)
+            episode_mask=train_mask,
+            key_first_k=key_first_k)
+
+        self.rgb_keys = rgb_keys
+        self.low_dim_keys = low_dim_keys
+        self.shape_meta = shape_meta
+        self.n_obs_steps = n_obs_steps
+        self.n_action_steps = n_action_steps
         self.train_mask = train_mask
         self.horizon = horizon
         self.pad_before = pad_before
@@ -57,37 +87,43 @@ class OmnidImageDataset(BaseImageDataset):
         val_set.train_mask = ~self.train_mask
         return val_set
 
-    def get_normalizer(self, mode='limits', **kwargs):
-        data = {
-            'action': self.replay_buffer['action'],
-            'agent_pos': self.replay_buffer['state']
-        }
+    def get_normalizer(self, **kwargs):
         normalizer = LinearNormalizer()
-        normalizer.fit(data=data, last_n_dims=1, mode=mode, **kwargs)
-        normalizer['camera'] = get_image_range_normalizer()
+
+        # Action normalizer
+        normalizer['action'] = SingleFieldLinearNormalizer.create_fit(self.replay_buffer['action'])
+
+        # Low dim observations
+        for key in self.low_dim_keys:
+            normalizer[key] = SingleFieldLinearNormalizer.create_fit(self.replay_buffer[key])
+
+        # Images
+        for key in self.rgb_keys:
+            normalizer[key] = get_image_range_normalizer()
+
         return normalizer
 
     def __len__(self) -> int:
         return len(self.sampler)
 
-    def _sample_to_data(self, sample):
-        agent_pos = sample['state'].astype(np.float32)
-        image = np.moveaxis(sample['camera'],-1,1)/255
-
-        data = {
-            'obs': {
-                'camera': image, # T, 3, 96, 96
-                'agent_pos': agent_pos, # T, (27 or 36)
-            },
-            'action': sample['action'].astype(np.float32) # T, 9
-        }
-        return data
-
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
         sample = self.sampler.sample_sequence(idx)
-        data = self._sample_to_data(sample)
-        torch_data = dict_apply(data, torch.from_numpy)
-        return torch_data
+
+        obs_dict = {}
+
+        for key in self.rgb_keys:
+            obs_dict[key] = np.moveaxis(sample[key][0:self.n_obs_steps], -1, 1).astype(np.float32) / 255
+            del sample[key]
+
+        for key in self.low_dim_keys:
+            obs_dict[key] = sample[key][0:self.n_obs_steps].astype(np.float32)
+            del sample[key]
+
+        data = {
+            'obs': dict_apply(obs_dict, torch.from_numpy),
+            'action': torch.from_numpy(sample['action'].astype(np.float32))
+        }
+        return data
 
 
 def test():

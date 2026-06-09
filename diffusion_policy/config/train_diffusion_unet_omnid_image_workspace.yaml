@@ -42,10 +42,10 @@ policy:
   num_inference_steps: 8
   obs_as_global_cond: ${obs_as_global_cond}
   # crop_shape: [76, 76] # 84x84 90%
-  crop_shape: [216, 288] # ch, cw 320x240 90%
+  crop_shape: [96, 128] # ch, cw 320x240 90%
   # crop_shape: null
-  diffusion_step_embed_dim: 128
-  down_dims: [256,512,1024]
+  diffusion_step_embed_dim: 32
+  down_dims: [64,128,256]
   kernel_size: 5
   n_groups: 8
   cond_predict_scale: True
@@ -65,14 +65,14 @@ ema:
 
 dataloader:
   batch_size: 8
-  num_workers: 2
+  num_workers: 1
   shuffle: True
   pin_memory: True
   persistent_workers: False
 
 val_dataloader:
   batch_size: 8
-  num_workers: 2
+  num_workers: 1
   shuffle: False
   pin_memory: True
   persistent_workers: False
@@ -91,8 +91,8 @@ training:
   resume: True
   # optimization
   lr_scheduler: cosine
-  lr_warmup_steps: 500
-  num_epochs: 10  # just for debugging
+  lr_warmup_steps: 100
+  num_epochs: 100  # just for debugging
   gradient_accumulate_every: 1
   # EMA destroys performance when used with BatchNorm
   # replace BatchNorm with GroupNorm.
@@ -100,8 +100,8 @@ training:
   # training loop control
   # in epochs
   rollout_every: 50
-  checkpoint_every: 5
-  val_every: 5
+  checkpoint_every: 10
+  val_every: 20
   sample_every: 5
   # steps per epoch
   max_train_steps: null
