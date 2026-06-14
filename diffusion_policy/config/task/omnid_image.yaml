@@ -1,17 +1,32 @@
 name: omnid_image
 
-image_shape: [3, 240, 320]
+# make sure the shape_meta contains a subset of the corresponding zarr dataset
+# it doens't have to contain element, but each key and shape should match 
+# only images from cameras aer rgb, everything else is low dim
 
-shape_meta: &shape_meta
+shape_meta:
   obs:
-    camera:
-      shape: *image_shape
-      type: rgb
-    agent_pos:
-      shape: [9]          # gimbal_pos(9) or force (9)
+    gimbal_position:           
+      shape: [9]
       type: low_dim
+    camera:             
+      shape: [3, 240, 320]
+      type: rgb
+    # add these when you have the data:
+    # gimbal_velocity:
+    #   shape: [9]
+    #   type: low_dim
+    # gimbal_force:
+    #   shape: [9]
+    #   type: low_dim
+    # payload_pose:
+    #   shape: [7]
+    #   type: low_dim
+    # payload_force:
+    #   shape: [1]
+    #   type: low_dim
   action:
-    shape: [9]             # global mode, [3] for local mode
+    shape: [9]
 
 dataset:
   _target_: diffusion_policy.dataset.omnid_image_dataset.OmnidImageDataset
