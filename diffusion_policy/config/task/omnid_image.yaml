@@ -4,7 +4,7 @@ name: omnid_image
 # it doens't have to contain element, but each key and shape should match 
 # only images from cameras aer rgb, everything else is low dim
 
-shape_meta:
+shape_meta: &shape_meta
   obs:
     gimbal_position:           
       shape: [9]
