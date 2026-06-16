@@ -1,4 +1,4 @@
-name: omnid_image
+name: lerobot_image
 
 # make sure the shape_meta contains a subset of the corresponding zarr dataset
 # it doens't have to contain element, but each key and shape should match 
@@ -6,30 +6,14 @@ name: omnid_image
 
 shape_meta: &shape_meta
   obs:
-    gimbal_pos:           
-      shape: [9]
+    follower_joint_pos:           
+      shape: [6]
       type: low_dim
     camera:             
       shape: [3, 240, 320]
       type: rgb
-    # add these when you have the data:
-    # gimbal_vel:
-    #   shape: [9]
-    #   type: low_dim
-    # gimbal_angle:
-    #   shape: [9]
-    #   type: low_dim
-    # gimbal_effort:
-    #   shape: [9]
-    #   type: low_dim
-    # payload_pose:
-    #   shape: [7]
-    #   type: low_dim
-    # payload_force:
-    #   shape: [1]
-    #   type: low_dim
   action:
-    shape: [9]
+    shape: [6]
 
 dataset:
   _target_: diffusion_policy.dataset.omnid_image_dataset.OmnidImageDataset
